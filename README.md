@@ -341,80 +341,6 @@ Optimization strategies:
 * Adaptive sampling rates based on water quality stability
 * Wi-Fi transmission batching to reduce radio-on time
 
-### Control Algorithm Pseudocode
-
-```python
-# Sensor Data Collection Loop
-WHILE system_running:
-  IF timer_1s_expired:
-    temperature = READ DS18B20 sensor
-    VALIDATE temperature IN range(-55, 125)
-    STORE temperature IN buffer
-    RESET 1s timer
-  
-  IF timer_5s_expired:
-    tds = READ TDS sensor analog pin
-    CONVERT tds_voltage TO ppm
-    VALIDATE tds IN range(0, 1000)
-    
-    turbidity = READ turbidity sensor analog pin
-    CONVERT turbidity_voltage TO NTU
-    VALIDATE turbidity IN range(0, 1000)
-    
-    STORE tds, turbidity IN buffer
-    RESET 5s timer
-  
-  # Data Preprocessing
-  APPLY outlier_filter TO buffer
-  APPLY normalization TO buffer
-  CALCULATE moving_average
-  DETECT peak_values
-  
-  # Cloud Transmission
-  IF firebase_connected:
-    FORMAT data AS JSON
-    SEND HTTP_POST TO firebase_url
-    IF response == SUCCESS:
-      CLEAR buffer
-    ELSE:
-      RETRY transmission
-  
-  # Machine Learning Classification
-  features = [temperature, tds, turbidity]
-  pollution_level = random_forest_model.predict(features)
-  
-  UPDATE firebase_path /pollution_level
-  
-  # Alert Check
-  IF temperature < 18 OR temperature > 32:
-    TRIGGER alert("Temperature out of range")
-  IF tds > 400:
-    TRIGGER alert("High TDS detected")
-  IF turbidity > 50:
-    TRIGGER alert("High turbidity detected")
-  IF pollution_level == "High":
-    TRIGGER alert("High pollution level")
-  
-  DELAY 100ms  # Main loop delay
-END WHILE
-
-# Mobile App Listener
-FIREBASE.listen("/sensors/temperature", ON_CHANGE:
-  UPDATE temperature_display
-)
-FIREBASE.listen("/sensors/tds", ON_CHANGE:
-  UPDATE tds_display
-)
-FIREBASE.listen("/sensors/turbidity", ON_CHANGE:
-  UPDATE turbidity_display
-)
-FIREBASE.listen("/pollution_level", ON_CHANGE:
-  UPDATE pollution_badge
-  IF pollution_level == "High":
-    SHOW notification
-)
-```
-
 ## 6. Results and Performance
 
 ### Testing Methodology
@@ -440,31 +366,77 @@ The AquaSense system was evaluated in a controlled aquaculture environment to en
 * Comparison algorithms: Random Forest, Support Vector Machine, Decision Tree
 * Performance metrics: Accuracy, Precision, Recall, F1-score
 
-### Machine Learning Classification Performance
+# Model Performance Results
 
-**Random Forest Model Results:**
+## Overview
+This section presents the classification performance of the model on both training and test datasets.
 
-| Metric | Training Data | Testing Data |
-|--------|--------------|--------------|
-| **Accuracy** | ~72% | >65% |
-| **Precision** | ~75% | ~68% |
-| **Recall** | ~70% | ~64% |
-| **F1-Score** | ~72% | ~66% |
+## Performance Summary
 
-**Confusion Matrix Analysis (Test Data):**
+| Metric | Training Set (160 samples) | Test Set (200 samples) |
+|--------|---------------------------|------------------------|
+| **Accuracy** | 65.63% | 65.50% |
+| **Macro F1-Score** | 0.60 | 0.54 |
+| **Weighted F1-Score** | 0.64 | 0.62 |
 
-| Actual ↓ / Predicted → | Low | Medium | High |
-|------------------------|-----|--------|------|
-| Low | 85% | 12% | 3% |
-| Medium | 18% | 65% | 17% |
-| High | 5% | 25% | 70% |
+## Training Set Performance (160 samples)
 
-**Analysis:**
-* >65% overall accuracy demonstrates reliable classification capability
-* Best performance on "Low" pollution class (85% correct identification)
-* "High" pollution detected with 70% accuracy (acceptable for early warning)
-* Medium pollution shows some misclassification (65% accuracy) due to overlap with adjacent classes
-* Model suitable for actionable decision-making and alerts
+### Overall Metrics
+- **Accuracy**: 0.65625
+- **Macro F1-Score**: 0.60
+- **Weighted F1-Score**: 0.64
+
+### Classification Report
+
+| Class | Precision | Recall | F1-Score | Support |
+|-------|-----------|--------|----------|---------|
+| 1 | 0.59 | 0.35 | 0.44 | 37 |
+| 2 | 0.66 | 0.81 | 0.73 | 90 |
+| 3 | 0.68 | 0.58 | 0.62 | 33 |
+| **Macro Avg** | 0.64 | 0.58 | 0.60 | 160 |
+| **Weighted Avg** | 0.65 | 0.66 | 0.64 | 160 |
+
+## Test Set Performance (200 samples)
+
+### Overall Metrics
+- **Accuracy**: 0.655 (65.5%)
+- **Macro F1-Score**: 0.54
+- **Weighted F1-Score**: 0.62
+
+### Classification Report
+
+| Class | Precision | Recall | F1-Score | Support |
+|-------|-----------|--------|----------|---------|
+| 1 | 0.67 | 0.21 | 0.31 | 39 |
+| 2 | 0.65 | 0.88 | 0.75 | 116 |
+| 3 | 0.68 | 0.47 | 0.55 | 45 |
+| **Macro Avg** | 0.66 | 0.52 | 0.54 | 200 |
+| **Weighted Avg** | 0.66 | 0.66 | 0.62 | 200 |
+
+## Key Findings
+
+### Model Generalization
+- **Similar Accuracy**: Training (65.63%) and test (65.50%) accuracy are nearly identical, indicating the model is not overfitting
+- **Slight Performance Drop**: Macro F1-score decreases from 0.60 (training) to 0.54 (test), suggesting some difficulty generalizing to unseen data
+
+### Strengths
+- Good generalization - no significant overfitting observed
+- Strong performance on Class 2 (majority class) with high recall on both sets
+- Consistent precision across classes
+
+### Challenges
+- **Class 1 (Minority Class)**: Significant performance degradation on test set
+  - Training recall: 35%
+  - Test recall: 21% (40% drop)
+  - This indicates the model struggles to generalize its Class 1 predictions
+- **Class 3**: Also shows decreased recall on test set (58% → 47%)
+- Class imbalance severely affects minority class performance
+
+### Test Set Insights
+The test set reveals:
+1. **Worse minority class detection**: Class 1 recall drops significantly, showing the model learned patterns that don't generalize well
+2. **Better majority class performance**: Class 2 recall improves (81% → 88%), but this may indicate bias toward the majority class
+3. **Overall balanced accuracy**: Despite class-specific issues, overall accuracy remains stable
 
 **Feature Importance Analysis:**
 
