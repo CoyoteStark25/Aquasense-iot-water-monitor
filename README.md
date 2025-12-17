@@ -1,6 +1,7 @@
 # AquaSense: IoT Water Quality Monitoring System
 
 A Low-Cost, Real-Time Remote Sensing Solution for Developing Regions
+![AquaSense IoT Water Monitor](docs/AquasenseImg.jpg)
 
 ## 1. Overview
 
@@ -152,6 +153,7 @@ The system employs a modular three-tier architecture integrating sensing, proces
 * **No local storage limitations**: Cloud-based data eliminates device memory constraints
 
 ### Mobile Application Interface
+![Mobile App Interface](docs/MobileAppInterface.png)
 
 * **Flutter cross-platform**: Single codebase for Android and iOS deployment
 * **Real-time dashboard**: Live sensor readings updated automatically
